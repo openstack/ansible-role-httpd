@@ -1,0 +1,112 @@
+---
+# Copyright 2024, Cleura AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+- name: Disabling vhosts that are marked as absent or not enabled
+  ansible.builtin.file:
+    path: "{{ httpd_vhost_enable_path }}/{{ vhost['name'] }}.conf"
+    state: absent
+  loop: >-
+    {{
+      httpd_vhosts | selectattr('state', 'defined') | selectattr('state', 'eq', 'absent') +
+      httpd_vhosts | selectattr('enabled', 'defined') | selectattr('enabled', 'false')
+    }}
+  loop_control:
+    loop_var: vhost
+    label: "{{ loop_label | to_json }}"
+  vars:
+    loop_label:
+      vhost: "{{ vhost['name'] }}"
+  notify:
+    - Reload web server
+
+- name: Removing vhost defenitions which are marked as absent
+  ansible.builtin.file:
+    path: "{{ httpd_conf_dir }}/sites-available/{{ vhost['name'] }}.conf"
+    state: absent
+  loop: "{{ httpd_vhosts | selectattr('state', 'defined') | selectattr('state', 'eq', 'absent') }}"
+  loop_control:
+    loop_var: vhost
+    label: "{{ loop_label | to_json }}"
+  vars:
+    loop_label:
+      vhost: "{{ vhost['name'] }}"
+  notify:
+    - Reload web server
+
+- name: Create and install SSL certificates
+  ansible.builtin.include_role:
+    name: pki
+    tasks_from: main_certs.yml
+    apply:
+      tags:
+        - httpd-config
+        - pki
+  vars:
+    pki_setup_host: "{{ httpd_pki_setup_host }}"
+    pki_dir: "{{ httpd_pki_dir }}"
+    pki_create_certificates: "{{ httpd_pki_create_certificates }}"
+    pki_regen_cert: "{{ httpd_pki_regen_cert }}"
+    pki_certificates: "{{ httpd_pki_certificates }}"
+    pki_install_certificates: "{{ httpd_pki_install_certificates }}"
+    pki_handler_cert_installed: "httpd cert installed"
+  when:
+    - httpd_pki_install_certificates | length > 0
+  tags:
+    - httpd-config
+    - pki
+
+- name: Placing vhost files that should be present
+  ansible.builtin.template:
+    src: httpd_vhost.conf.j2
+    dest: "{{ httpd_conf_dir }}/sites-available/{{ vhost['name'] }}.conf"
+    owner: "{{ httpd_service_user_name }}"
+    group: "{{ httpd_service_group_name }}"
+    mode: "0640"
+  loop: >-
+    {{
+      httpd_vhosts | selectattr('state', 'defined') | selectattr('state', 'eq', 'present') +
+      httpd_vhosts | selectattr('state', 'undefined')
+    }}
+  loop_control:
+    loop_var: vhost
+    label: "{{ loop_label | to_json }}"
+  vars:
+    loop_label:
+      vhost: "{{ vhost['name'] }}"
+  notify:
+    - Reload web server
+
+- name: Enable required vhosts
+  ansible.builtin.file:
+    src: "{{ httpd_conf_dir }}/sites-available/{{ vhost['name'] }}.conf"
+    dest: "{{ httpd_vhost_enable_path }}/{{ vhost['name'] }}.conf"
+    state: link
+  loop: >-
+    {{
+      (
+        httpd_vhosts | selectattr('enabled', 'defined') | selectattr('enabled', 'true') +
+        httpd_vhosts | selectattr('enabled', 'undefined')
+      ) | rejectattr('name', 'in', absent_vhosts)
+    }}
+  loop_control:
+    loop_var: vhost
+    label: "{{ loop_label | to_json }}"
+  vars:
+    loop_label:
+      vhost: "{{ vhost['name'] }}"
+    absent_vhosts: >-
+      {{ httpd_vhosts | selectattr('state', 'defined') | selectattr('state', 'eq', 'absent') | map(attribute='name') }}
+  notify:
+    - Reload web server

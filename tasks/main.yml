@@ -1,0 +1,78 @@
+---
+# Copyright 2024, Cleura AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+- name: Ensure that at least one vhost is defined
+  ansible.builtin.assert:
+    that:
+      - httpd_vhosts | length > 0
+      - httpd_vhosts | selectattr('name', 'undefined') | length == 0
+      - httpd_vhosts | selectattr('document_root', 'undefined') | length == 0
+    success_msg: vhosts are defined properly
+    fail_msg: >-
+      At least one vhost must be defined in `httpd_vhosts`.
+      Each vhost must contain at least `name` and `document_root` keys.
+
+- name: Gather variables for each operating system
+  ansible.builtin.include_vars: "{{ lookup('first_found', params) }}"
+  vars:
+    params:
+      files:
+        - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_version'] | lower }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}-{{ ansible_facts['distribution_major_version'] | lower }}.yml"
+        - "{{ ansible_facts['os_family'] | lower }}-{{ ansible_facts['distribution_major_version'] | lower }}.yml"
+        - "{{ ansible_facts['distribution'] | lower }}.yml"
+        - "{{ ansible_facts['os_family'] | lower }}-{{ ansible_facts['distribution_version'].split('.')[0] }}.yml"
+        - "{{ ansible_facts['os_family'] | lower }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+  tags:
+    - always
+
+- name: Importing httpd_pre_install tasks
+  ansible.builtin.import_tasks:
+    file: httpd_pre_install.yml
+  tags:
+    - httpd-install
+
+- name: Install distro packages
+  ansible.builtin.package:
+    name: "{{ httpd_distro_packages | reject('equalto', '') | list }}"
+    state: "{{ httpd_package_state }}"
+    update_cache: "{{ (ansible_facts['pkg_mgr'] == 'apt') | ternary('yes', omit) }}"
+    cache_valid_time: "{{ (ansible_facts['pkg_mgr'] == 'apt') | ternary(cache_timeout, omit) }}"
+  register: install_packages
+  until: install_packages is success
+  retries: 5
+  delay: 5
+  notify:
+    - Restart web server
+  tags:
+    - httpd-install
+
+- name: Importing httpd_post_install tasks
+  ansible.builtin.import_tasks:
+    file: httpd_post_install.yml
+  tags:
+    - httpd-config
+
+- name: Importing httpd_configure_vhosts tasks
+  ansible.builtin.import_tasks:
+    file: httpd_configure_vhosts.yml
+  tags:
+    - httpd-config
+    - httpd-vhosts
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers

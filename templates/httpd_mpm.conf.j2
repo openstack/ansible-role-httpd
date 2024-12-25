@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+
+<IfModule mpm_{{ httpd_mpm_backend }}_module>
+        ServerLimit              {{ httpd_mpm_server_limit }}
+        StartServers             {{ httpd_mpm_start_servers }}
+        MinSpareThreads          {{ httpd_mpm_min_spare_threads }}
+        MaxSpareThreads          {{ httpd_mpm_max_spare_threads }}
+        ThreadLimit              {{ httpd_mpm_thread_limit }}
+        ThreadsPerChild          {{ httpd_mpm_thread_child }}
+        MaxRequestWorkers        {{ httpd_mpm_max_requests }}
+        MaxConnectionsPerChild   {{ httpd_mpm_max_conn_child }}
+</IfModule>

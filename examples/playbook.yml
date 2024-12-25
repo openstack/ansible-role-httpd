@@ -1,0 +1,6 @@
+---
+
+- name: Installing Apache Web Server
+  hosts: httpd
+  roles:
+    - role: "{{ playbook_dir | dirname | basename }}"

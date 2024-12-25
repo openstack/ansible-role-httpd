@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  author: OpenStack-Ansible Contributors
+  description: Installation and configuration of Apache Web Server
+  license: Apache2
+  role_name: httpd
+  namespace: openstack
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - bullseye
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - cloud
+    - httpd

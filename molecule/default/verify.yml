@@ -1,0 +1,153 @@
+---
+- name: Testing httpd deployment
+  hosts: httpd
+  vars:
+    _httpd_ctl_binary:
+      debian: apachectl
+      redhat: httpd
+    _httpd_vhost_present_dir:
+      debian: /etc/apache2/sites-available
+      redhat: /etc/httpd/sites-available
+    _httpd_vhost_enable_dir:
+      debian: "/etc/apache2/sites-enabled"
+      redhat: "/etc/httpd/conf.d"
+    _os_family: "{{ ansible_facts['os_family'] | lower }}"
+
+  tasks:
+    - name: Verify Apache configuration syntax
+      ansible.builtin.command: "{{ _httpd_ctl_binary[_os_family] }} -t"
+      changed_when: false
+
+    - name: Fetch list of listened ports
+      community.general.listen_ports_facts:
+
+    - name: Verify that expected ports are listened
+      vars:
+        tcp_ports: "{{ ansible_facts.tcp_listen | map(attribute='port') | list | unique }}"
+      ansible.builtin.assert:
+        that:
+          - "80 not in tcp_ports"
+          - "443 not in tcp_ports"
+          - "8080 in tcp_ports"
+          - "8081 not in tcp_ports"
+          - "8082 not in tcp_ports"
+          - "8443 in tcp_ports"
+
+    - name: Fetch list of loaded modules
+      ansible.builtin.command: "{{ _httpd_ctl_binary[_os_family] }} -D DUMP_MODULES"
+      register: _httpd_modules_results
+      changed_when: false
+
+    - name: Ensure expected modules are present
+      ansible.builtin.assert:
+        that:
+          - _httpd_modules_results.stdout_lines | select("match", "\sproxy_module\s.*") | length > 0
+          - _httpd_modules_results.stdout_lines | select("match", "\sssl_module\s.*") | length > 0
+          - _httpd_modules_results.stdout_lines | select("match", "\smpm_event_module\s.*") | length > 0
+
+    - name: Fetch vhost data
+      ansible.builtin.command: "{{ _httpd_ctl_binary[_os_family] }} -D DUMP_VHOSTS"
+      register: _httpd_vhosts_results
+      changed_when: false
+
+    - name: Ensure ServerName for all vhosts is set correctly
+      ansible.builtin.assert:
+        that:
+          - _httpd_vhosts_results.stdout_lines | select("match", "\*:8080\s*test_http\s.*") | length > 0
+          - _httpd_vhosts_results.stdout_lines | select("match", "\*:8443\s*secure_vhost\s.*") | length > 0
+          - _httpd_vhosts_results.stdout_lines | select("match", ".*\shttpd-default\s.*") | length == 0
+
+    - name: Check vhost paths of present vhosts
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ _httpd_vhost_present_dir[_os_family] }}/test_http.conf"
+        - "{{ _httpd_vhost_present_dir[_os_family] }}/test_https.conf"
+        - "{{ _httpd_vhost_present_dir[_os_family] }}/absent_vhost.conf"
+        - "{{ _httpd_vhost_present_dir[_os_family] }}/disabled_vhost.conf"
+      register: _vhost_present_conf_files
+
+    - name: Assert presence of vhost files
+      ansible.builtin.assert:
+        that:
+          - (_vhost_present_conf_files.results | selectattr('item', 'eq', _httpd_vhost_present_dir[_os_family] ~ '/test_http.conf') | first).stat.exists
+          - (_vhost_present_conf_files.results | selectattr('item', 'eq', _httpd_vhost_present_dir[_os_family] ~ '/test_https.conf') | first).stat.exists
+          - (_vhost_present_conf_files.results | selectattr('item', 'eq', _httpd_vhost_present_dir[_os_family] ~ '/disabled_vhost.conf') | first).stat.exists
+          - not (_vhost_present_conf_files.results | selectattr('item', 'eq', _httpd_vhost_present_dir[_os_family] ~ '/absent_vhost.conf') | first).stat.exists
+
+    - name: Check vhost paths of enabled vhosts
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ _httpd_vhost_enable_dir[_os_family] }}/test_http.conf"
+        - "{{ _httpd_vhost_enable_dir[_os_family] }}/test_https.conf"
+        - "{{ _httpd_vhost_enable_dir[_os_family] }}/absent_vhost.conf"
+        - "{{ _httpd_vhost_enable_dir[_os_family] }}/disabled_vhost.conf"
+      register: _vhost_enable_conf_files
+
+    - name: Assert enablement of vhost files
+      ansible.builtin.assert:
+        that:
+          - (_vhost_enable_conf_files.results | selectattr('item', 'eq', _httpd_vhost_enable_dir[_os_family] ~ '/test_http.conf') | first).stat.exists
+          - (_vhost_enable_conf_files.results | selectattr('item', 'eq', _httpd_vhost_enable_dir[_os_family] ~ '/test_https.conf') | first).stat.exists
+          - not (_vhost_enable_conf_files.results | selectattr('item', 'eq', _httpd_vhost_enable_dir[_os_family] ~ '/disabled_vhost.conf') | first).stat.exists
+          - not (_vhost_enable_conf_files.results | selectattr('item', 'eq', _httpd_vhost_enable_dir[_os_family] ~ '/absent_vhost.conf') | first).stat.exists
+
+    - name: Place a noop file to serve via Apache
+      ansible.builtin.copy:
+        content: "{{ item.content }}"
+        dest: "{{ item.dest }}"
+        mode: "0644"
+      with_items:
+        - dest: /var/www/test_http/noop.txt
+          content: Hello, test_http!
+        - dest: /var/www/test_https/noop.txt
+          content: Hello, test_https!
+
+    - name: Fetch the noop file from HTTP vhost and ensure content
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:8080/noop.txt"
+        follow_redirects: none
+        method: GET
+        return_content: true
+      register: test_http_noop
+      failed_when: test_http_noop is failed or test_http_noop.content != 'Hello, test_http!'
+
+    - name: Fetch the noop file from HTTPS vhost and ensure content
+      ansible.builtin.uri:
+        url: "https://{{ ansible_facts['fqdn'] }}:8443/noop.txt"
+        follow_redirects: none
+        method: GET
+        return_content: true
+      register: test_https_noop
+      failed_when: test_https_noop is failed or test_https_noop.content != 'Hello, test_https!'
+
+    - name: Check if certificates were generated
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "/etc/ssl/certs/httpd_{{ inventory_hostname }}_test_http.pem"
+        - "/etc/ssl/certs/httpd_{{ inventory_hostname }}_test_https.pem"
+        - "/etc/ssl/certs/httpd_{{ inventory_hostname }}_disabled_vhost.pem"
+      register: _vhost_ssl_files
+
+    - name: Assert enablement of vhost files
+      ansible.builtin.assert:
+        that:
+          - not (_vhost_ssl_files.results | selectattr('item', 'eq', '/etc/ssl/certs/httpd_' ~ inventory_hostname ~ '_test_http.pem') | first).stat.exists
+          - (_vhost_ssl_files.results | selectattr('item', 'eq', '/etc/ssl/certs/httpd_' ~ inventory_hostname ~ '_test_https.pem') | first).stat.exists
+          - not (_vhost_ssl_files.results | selectattr('item', 'eq','/etc/ssl/certs/httpd_' ~ inventory_hostname ~ '_disabled_vhost.pem') | first).stat.exists
+
+    - name: Fetch details of generated certificate
+      community.crypto.x509_certificate_info:
+        path: "/etc/ssl/certs/httpd_{{ inventory_hostname }}_test_https.pem"
+      register: test_https_cert
+
+    - name: Verify generated cert details
+      ansible.builtin.assert:
+        that:
+          - test_https_cert['issuer']['commonName'] == 'Apache HTTPD Intermediate CA'
+          - test_https_cert['subject']['commonName'] == inventory_hostname
+          - "'DNS:noop.server' in test_https_cert['subject_alt_name']"
+          - "'DNS:httpd-default' in test_https_cert['subject_alt_name']"
+          - not test_https_cert['expired']

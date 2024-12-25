@@ -1,0 +1,15 @@
+---
+
+molecule_packages:
+  debian:
+    - ca-certificates
+    - python3-cryptography
+    - gnutls-bin
+    - iproute2
+  redhat:
+    - ca-certificates
+    - python3-cryptography
+    - gnutls-utils
+    - iproute
+    - procps
+    - sudo

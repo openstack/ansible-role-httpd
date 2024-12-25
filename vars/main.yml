@@ -1,0 +1,71 @@
+---
+# Copyright 2024, Cleura AB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+_httpd_vhosts_with_ssl: "{{ httpd_vhosts | selectattr('ssl', 'defined') | selectattr('ssl') }}"
+
+_httpd_pki_generate_certificates_vhosts: |-
+  {% set certs_to_generate = [] %}
+  {% for vhost in _httpd_vhosts_with_ssl %}
+  {%   if not ('cert' in vhost['ssl'] and 'key' in vhost['ssl']) %}
+  {%     set _ = certs_to_generate.append({
+           'name': ['httpd', inventory_hostname, vhost['name']] | join('_'),
+           'provider': 'ownca',
+           'cn': inventory_hostname,
+           'san': vhost['ssl']['san'] | default(httpd_pki_default_san),
+           'signed_by': httpd_pki_intermediate_cert_name,
+         })
+  %}
+  {%   endif %}
+  {% endfor %}
+  {{ certs_to_generate }}
+
+_httpd_pki_install_certificates_vhosts: |-
+  {% set certs_to_install = [] %}
+  {% for vhost in _httpd_vhosts_with_ssl %}
+  {%   set cert_name = ['httpd', inventory_hostname, vhost['name']] | join('_') %}
+  {%   if not ('cert' in vhost['ssl'] and 'key' in vhost['ssl']) %}
+  {%     set _ = vhost['ssl'].update({
+           'cert': httpd_pki_certs_path ~ cert_name ~ '-chain.crt',
+           'key': httpd_pki_keys_path ~ cert_name ~ '.key.pem'
+         })
+  %}
+  {%   endif %}
+  {%   set _ = certs_to_install.append({
+         'src': vhost['ssl']['cert'],
+         'dest': httpd_ssl_certs_dir ~ cert_name ~ '.pem',
+         'owner': httpd_service_user_name,
+         'group': httpd_service_group_name,
+         'mode': '0640'
+       })
+  %}
+  {%   set _ = certs_to_install.append({
+         'src': vhost['ssl']['key'],
+         'dest': httpd_ssl_keys_dir ~ cert_name ~ '.key',
+         'owner': httpd_service_user_name,
+         'group': httpd_service_group_name,
+         'mode': '0600'
+       })
+  %}
+  {%   set _ = certs_to_install.append({
+         'src': vhost['ssl'].get('ca'),
+         'dest': httpd_ssl_certs_dir ~ cert_name ~ '-ca.pem',
+         'owner': httpd_service_user_name,
+         'group': httpd_service_group_name,
+         'mode': '0644',
+         'condition': 'ca' in vhost['ssl']
+       })
+  %}
+  {% endfor %}
+  {{ certs_to_install }}

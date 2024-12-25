@@ -1,0 +1,57 @@
+# {{ ansible_managed }}
+
+Listen {{ vhost['address'] | default('*') }}:{{ vhost['port'] | default(80) }}
+
+<VirtualHost {{ vhost['address'] | default('*') }}:{{ vhost['port'] | default(80) }}>
+
+    ServerName {{ vhost['server_name'] | default(httpd_server_name) }}
+    LogLevel {{ vhost['log_level'] | default(httpd_log_level) }}
+    ErrorLog  syslog:daemon
+    CustomLog "|/usr/bin/env logger -p daemon.info -t {{ httpd_system_service_name }}:{{ vhost['name'] }}" {{ vhost['log_format'] | default(httpd_custom_log_format) }}
+    DocumentRoot {{ vhost['document_root'] }}
+
+{% for header in vhost['headers'] | default([]) %}
+    {{ header }}
+{% endfor %}
+
+{% if 'ssl' in vhost and vhost['ssl'] %}
+{%   set cert_name = ['httpd', inventory_hostname, vhost['name']] | join('_') %}
+    SSLEngine on
+    SSLCertificateFile {{ httpd_ssl_certs_dir ~ cert_name }}.pem
+    SSLCertificateKeyFile {{ httpd_ssl_keys_dir ~ cert_name }}.key
+{%   if 'ca' in vhost['ssl'] %}
+    SSLCACertificateFile {{ httpd_ssl_certs_dir ~ cert_name }}-ca.pem
+{%   endif %}
+    SSLCompression Off
+    SSLOptions +StdEnvVars +ExportCertData
+    SSLProtocol {{ vhost['protocol'] | default(httpd_ssl_protocol) }}
+    SSLHonorCipherOrder On
+{%   if httpd_ssl_cipher_suite_tls12 %}
+    SSLCipherSuite {{ httpd_ssl_cipher_suite_tls12 }}
+{%   endif %}
+{%   if httpd_ssl_cipher_suite_tls13 %}
+    SSLCipherSuite TLSv1.3 {{ httpd_ssl_cipher_suite_tls13 }}
+{%   endif %}
+{% endif %}
+
+{% for option in vhost['options'] | default([]) %}
+    {{ option }}
+{% endfor %}
+
+{% for location in vhost['locations'] | default([]) %}
+    <Location {{ location['path'] }}>
+{%   for loc_param in location['options'] %}
+        {{ loc_param }}
+{%   endfor %}
+    </Location>
+{% endfor %}
+
+{% for directory in vhost['directories'] | default([]) %}
+    <Directory {{ directory['path'] }}>
+{%   for dir_param in directory['options'] %}
+        {{ dir_param }}
+{%   endfor %}
+    </Directory>
+{% endfor %}
+
+</VirtualHost>

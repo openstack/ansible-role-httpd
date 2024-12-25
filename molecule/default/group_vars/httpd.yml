@@ -1,0 +1,49 @@
+---
+
+httpd_pki_setup_host: "{{ inventory_hostname }}"
+
+httpd_extra_modules:
+  - name: proxy
+    state: present
+
+httpd_vhosts:
+  - name: test_http
+    address: "*"
+    document_root: /var/www/test_http
+    directories:
+      - path: "/var/www/cgi-bin"
+        options:
+          - Options Indexes FollowSymLinks MultiViews
+    headers:
+      - Header set X-Content-Type-Options "nosniff"
+    locations:
+      - path: "/Shibboleth.sso"
+        options:
+          - SetHandler shib
+    options:
+      - Options +FollowSymLinks
+    port: 8080
+    server_name: test_http
+  - name: test_https
+    address: "*"
+    document_root: /var/www/test_https
+    options:
+      - Options +FollowSymLinks
+    port: 8443
+    ssl:
+      san: "{{ httpd_pki_default_san }},DNS:noop.server"
+    server_name: secure_vhost
+  - name: absent_vhost
+    address: "*"
+    document_root: /var/www/absent
+    port: 8081
+    server_name: "absent"
+    state: absent
+    enabled: true
+  - name: disabled_vhost
+    address: "*"
+    document_root: /var/www/disabled
+    port: 8082
+    server_name: "disabled"
+    enabled: false
+    ssl: false

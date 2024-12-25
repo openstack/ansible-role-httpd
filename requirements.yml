@@ -1,0 +1,17 @@
+---
+roles:
+  - name: pki
+    version: master
+    scm: git
+    src: https://opendev.org/openstack/ansible-role-pki
+collections:
+  # for the PKI role
+  - name: community.crypto
+    source: https://github.com/ansible-collections/community.crypto
+    type: git
+    version: 2.23.0
+  # for the httpd role
+  - name: community.general
+    source: https://github.com/ansible-collections/community.general
+    type: git
+    version: 10.2.0
