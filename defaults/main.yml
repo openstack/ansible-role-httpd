@@ -93,7 +93,7 @@ httpd_pki_setup_host: "{{ openstack_pki_setup_host | default('localhost') }}"
 
 ## Create a certificate authority if one does not already exist
 httpd_pki_create_ca: "{{ openstack_pki_authorities is not defined | bool and httpd_pki_create_certificates }}"
-httpd_pki_regen_ca: ''
+httpd_pki_regen_ca: ""
 httpd_pki_authorities:
   - name: "HTTPDRoot"
     country: "GB"
@@ -134,7 +134,7 @@ httpd_pki_certificates: "{{ _httpd_pki_generate_certificates_vhosts }}"
 httpd_pki_create_certificates: "{{ httpd_pki_certificates | length > 0 }}"
 httpd_pki_default_san: "{{ openstack_pki_san | default('DNS:' ~ ansible_facts['hostname'] ~ ',DNS:' ~ ansible_facts['fqdn']) }}"
 httpd_pki_keys_path: "{{ httpd_pki_dir ~ '/certs/private/' }}"
-httpd_pki_regen_cert: ''
+httpd_pki_regen_cert: ""
 
 httpd_pki_intermediate_cert_name: "{{ openstack_pki_service_intermediate_cert_name | default('HTTPDIntermediate') }}"
 httpd_pki_intermediate_cert_path: "{{ httpd_pki_dir ~ '/roots/' ~ httpd_pki_intermediate_cert_name ~ '/certs/' ~ httpd_pki_intermediate_cert_name ~ '.crt' }}"

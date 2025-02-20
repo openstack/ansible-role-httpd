@@ -76,7 +76,7 @@
 - name: Remove Listen from Apache config
   ansible.builtin.lineinfile:
     dest: "{{ httpd_security_conf }}"
-    regexp: '^(Listen.*)'
+    regexp: "^(Listen.*)"
     backrefs: true
-    line: '#\1'
+    line: "#\\1"
   notify: Restart web server
