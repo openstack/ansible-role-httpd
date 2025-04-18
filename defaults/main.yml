@@ -20,6 +20,7 @@ httpd_conf_dir: "/etc/{{ httpd_system_service_name }}"
 httpd_conf_file: "{{ _httpd_conf_file }}"
 httpd_default_sites: "{{ _httpd_default_sites }}"
 httpd_distro_packages: "{{ _httpd_distro_packages }}"
+httpd_extra_packages: []
 httpd_extra_conf_files: "{{ _httpd_extra_conf_files }}"
 
 ## List of modules and MPMs to enable/disable is defined only for DEB systems
