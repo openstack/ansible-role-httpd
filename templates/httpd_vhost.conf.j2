@@ -8,7 +8,10 @@ Listen {{ vhost['address'] | default('*') }}:{{ vhost['port'] | default(80) }}
     LogLevel {{ vhost['log_level'] | default(httpd_log_level) }}
     ErrorLog  syslog:daemon
     CustomLog "|/usr/bin/env logger -p daemon.info -t {{ httpd_system_service_name }}:{{ vhost['name'] }}" {{ vhost['log_format'] | default(httpd_custom_log_format) }}
+
+    {% if 'document_root' in vhost %}
     DocumentRoot {{ vhost['document_root'] }}
+    {% endif %}
 
 {% for header in vhost['headers'] | default([]) %}
     {{ header }}

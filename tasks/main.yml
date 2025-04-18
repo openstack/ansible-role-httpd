@@ -18,11 +18,10 @@
     that:
       - httpd_vhosts | length > 0
       - httpd_vhosts | selectattr('name', 'undefined') | length == 0
-      - httpd_vhosts | selectattr('document_root', 'undefined') | length == 0
     success_msg: vhosts are defined properly
     fail_msg: >-
       At least one vhost must be defined in `httpd_vhosts`.
-      Each vhost must contain at least `name` and `document_root` keys.
+      Each vhost must contain at least `name` key.
 
 - name: Gather variables for each operating system
   ansible.builtin.include_vars: "{{ lookup('first_found', params) }}"

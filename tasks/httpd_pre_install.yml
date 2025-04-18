@@ -36,7 +36,7 @@
         (
           httpd_vhosts | selectattr('state', 'defined') | selectattr('state', 'eq', 'present') +
           httpd_vhosts | selectattr('state', 'undefined')
-        ) | map(attribute='document_root') | map('community.general.dict_kv', 'path')
+        ) | selectattr('document_root', 'defined') | map(attribute='document_root') | map('community.general.dict_kv', 'path')
       }}
     _default_paths:
       - path: "{{ httpd_conf_dir }}/sites-available"
