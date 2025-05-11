@@ -102,27 +102,33 @@ httpd_pki_authorities:
     organization_name: "Example Corporation"
     organizational_unit_name: "IT Security"
     cn: "Apache HTTPD Root CA"
-    provider: selfsigned
-    basic_constraints: "CA:TRUE"
     key_usage:
       - digitalSignature
       - cRLSign
       - keyCertSign
-    not_after: "+3650d"
+    ttl: "3650d"
+    # standalone backend only
+    provider: selfsigned
+    basic_constraints: "CA:TRUE"
+    # hashi_vault backend only
+    vault_path: pki_root
   - name: "HTTPDIntermediate"
     country: "GB"
     state_or_province_name: "England"
     organization_name: "Example Corporation"
     organizational_unit_name: "IT Security"
     cn: "Apache HTTPD Intermediate CA"
-    provider: ownca
-    basic_constraints: "CA:TRUE,pathlen:0"
     key_usage:
       - digitalSignature
       - cRLSign
       - keyCertSign
-    not_after: "+3650d"
+    ttl: "3650d"
+    # standalone backend only
+    provider: ownca
+    basic_constraints: "CA:TRUE,pathlen:0"
     signed_by: "HTTPDRoot"
+    # hashi_vault backend only
+    vault_path: pki_int
 
 # Installation details for certificate authorities
 httpd_pki_install_ca:
@@ -133,10 +139,10 @@ httpd_pki_install_ca:
 httpd_pki_certs_path: "{{ httpd_pki_dir ~ '/certs/certs/' }}"
 httpd_pki_certificates: "{{ _httpd_pki_generate_certificates_vhosts }}"
 httpd_pki_create_certificates: "{{ httpd_pki_certificates | length > 0 }}"
-httpd_pki_default_san: "{{ openstack_pki_san | default('DNS:' ~ ansible_facts['hostname'] ~ ',DNS:' ~ ansible_facts['fqdn']) }}"
+httpd_pki_default_san: "{{ openstack_pki_san | default({'dns': [ansible_facts['hostname'], ansible_facts['fqdn']]}) }}"
 httpd_pki_keys_path: "{{ httpd_pki_dir ~ '/certs/private/' }}"
 httpd_pki_regen_cert: ""
-
+httpd_pki_backend: "{{ openstack_pki_backend | default('standalone') }}"
 httpd_pki_intermediate_cert_name: "{{ openstack_pki_service_intermediate_cert_name | default('HTTPDIntermediate') }}"
 httpd_pki_intermediate_cert_path: "{{ httpd_pki_dir ~ '/roots/' ~ httpd_pki_intermediate_cert_name ~ '/certs/' ~ httpd_pki_intermediate_cert_name ~ '.crt' }}"
 

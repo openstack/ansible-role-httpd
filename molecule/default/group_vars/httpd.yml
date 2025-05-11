@@ -31,7 +31,7 @@ httpd_vhosts:
       - Options +FollowSymLinks
     port: 8443
     ssl:
-      san: "{{ httpd_pki_default_san }},DNS:noop.server"
+      san: "{{ httpd_pki_default_san | combine({'dns': httpd_pki_default_san.dns + ['noop.server']}) }}"
     server_name: secure_vhost
   - name: absent_vhost
     address: "*"

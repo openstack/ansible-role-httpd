@@ -63,6 +63,7 @@
         - httpd-install
         - pki
   vars:
+    pki_backend: "{{ httpd_pki_backend }}"
     pki_setup_host: "{{ httpd_pki_setup_host }}"
     pki_dir: "{{ httpd_pki_dir }}"
     pki_create_ca: "{{ httpd_pki_create_ca }}"
@@ -84,6 +85,8 @@
         - httpd-install
         - pki
   vars:
+    pki_backend: "{{ httpd_pki_backend }}"
+    pki_authorities: "{{ httpd_pki_authorities }}"
     pki_setup_host: "{{ httpd_pki_setup_host }}"
     pki_dir: "{{ httpd_pki_dir }}"
     pki_install_ca: "{{ httpd_pki_install_ca }}"

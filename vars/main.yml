@@ -35,36 +35,29 @@ _httpd_pki_install_certificates_vhosts: |-
   {% set certs_to_install = [] %}
   {% for vhost in _httpd_vhosts_with_ssl %}
   {%   set cert_name = ['httpd', inventory_hostname, vhost['name']] | join('_') %}
-  {%   if not ('cert' in vhost['ssl'] and 'key' in vhost['ssl']) %}
-  {%     set _ = vhost['ssl'].update({
-           'cert': httpd_pki_certs_path ~ cert_name ~ '-chain.crt',
-           'key': httpd_pki_keys_path ~ cert_name ~ '.key.pem'
-         })
-  %}
-  {%   endif %}
   {%   set _ = certs_to_install.append({
-         'src': vhost['ssl']['cert'],
+         'name': ['httpd', inventory_hostname, vhost['name']] | join('_'),
          'dest': httpd_ssl_certs_dir ~ cert_name ~ '.pem',
          'owner': httpd_service_user_name,
          'group': httpd_service_group_name,
-         'mode': '0640'
+         'type': 'certificate_chain'
        })
   %}
   {%   set _ = certs_to_install.append({
-         'src': vhost['ssl']['key'],
+         'name': ['httpd', inventory_hostname, vhost['name']] | join('_'),
          'dest': httpd_ssl_keys_dir ~ cert_name ~ '.key',
          'owner': httpd_service_user_name,
          'group': httpd_service_group_name,
-         'mode': '0600'
+         'type': 'private_key'
        })
   %}
   {%   set _ = certs_to_install.append({
-         'src': vhost['ssl'].get('ca'),
+         'name': ['httpd', inventory_hostname, vhost['name']] | join('_'),
          'dest': httpd_ssl_certs_dir ~ cert_name ~ '-ca.pem',
          'owner': httpd_service_user_name,
          'group': httpd_service_group_name,
-         'mode': '0644',
-         'condition': 'ca' in vhost['ssl']
+         'condition': 'ca' in vhost['ssl'],
+         'type': 'ca_bundle'
        })
   %}
   {% endfor %}
