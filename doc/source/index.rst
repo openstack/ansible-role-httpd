@@ -2,12 +2,11 @@
 OpenStack-Ansible HTTPD role
 ============================
 
-This role installs a PKI infrastructure for maintaining a Root CA and
-creating server certificates as required to enable secure communication
-between components in a deployment.
+This role installs an Apache Web Server for serving static files and various
+applications which are required for the deployment.
 
 To clone or view the source code for this repository, visit the role repository
-for `pki <https://opendev.org/openstack/ansible-role-httpd>`_.
+for `httpd <https://opendev.org/openstack/ansible-role-httpd>`_.
 
 Sample configuration
 ~~~~~~~~~~~~~~~~~~~~
