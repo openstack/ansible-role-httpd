@@ -10,6 +10,9 @@ collections:
     source: https://github.com/ansible-collections/community.crypto
     type: git
     version: 2.23.0
+  - name: https://opendev.org/openstack/openstack-ansible-plugins
+    type: git
+    version: master
   # for the httpd role
   - name: community.general
     source: https://github.com/ansible-collections/community.general

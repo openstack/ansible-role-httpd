@@ -10,7 +10,7 @@ driver:
 
 platforms:
   - name: "httpd-${MOLECULE_SCENARIO_NAME}"
-    image: "${DOCKER_REGISTRY:-quay.io/gotmax23}/${DOCKER_IMAGE_TAG:-debian-systemd:bookworm}"
+    image: "${DOCKER_REGISTRY:-quay.io/gotmax23}/${DOCKER_IMAGE_TAG:-debian-systemd:trixie}"
     command: ${DOCKER_COMMAND:-""}
     pre_build_image: true
     privileged: true
@@ -23,9 +23,9 @@ provisioner:
   lint:
     name: ansible-lint
   playbooks:
-    prepare: prepare.yml
-    converge: converge.yml
-    verify: verify.yml
+    prepare: ../../tests/prepare.yml
+    converge: ../../tests/test.yml
+    verify: ../../tests/verify.yml
   inventory:
     links:
       group_vars: ./group_vars/
