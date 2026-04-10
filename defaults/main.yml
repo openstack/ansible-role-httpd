@@ -67,7 +67,7 @@ httpd_system_service_name: "{{ _httpd_system_service_name }}"
 httpd_vhosts: []
 
 # Logging
-httpd_custom_log_format: '"%h %l %u \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\""'
+httpd_custom_log_format: '"%h %l %u \"%{X-Forwarded-For}i\" \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\""'
 httpd_log_level: info
 
 # MPM tunables
