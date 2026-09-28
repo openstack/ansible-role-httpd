@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-- name: Ensure apache2 MPM for Debian/Ubuntu
+- name: Ensure Apache MPM for Debian/Ubuntu
   community.general.apache2_module:
     name: "{{ item.name }}"
     state: "{{ item.state }}"
@@ -24,7 +24,7 @@
     - ansible_facts['pkg_mgr'] == 'apt'
   notify: Restart web server
 
-- name: Ensure apache2 MPM for EL
+- name: Ensure Apache MPM for RHEL
   ansible.builtin.copy:
     content: |
       LoadModule mpm_{{ httpd_mpm_backend }}_module modules/mod_mpm_{{ httpd_mpm_backend }}.so
@@ -35,7 +35,7 @@
     - ansible_facts['pkg_mgr'] == 'dnf'
   notify: Restart web server
 
-- name: Enable apache2 modules
+- name: Enable Apache modules for Debian/Ubuntu
   community.general.apache2_module:
     name: "{{ item.name }}"
     state: "{{ item.state }}"
@@ -45,7 +45,7 @@
     - ansible_facts['pkg_mgr'] == 'apt'
   notify: Restart web server
 
-- name: Disable default apache site
+- name: Disable default Apache site
   ansible.builtin.file:
     path: "{{ item }}"
     state: "absent"
@@ -73,7 +73,7 @@
   with_items: "{{ httpd_extra_conf_files }}"
   notify: Restart web server
 
-- name: Remove Listen from Apache config
+- name: Remove Listen from Apache configuration
   ansible.builtin.lineinfile:
     dest: "{{ httpd_security_conf }}"
     regexp: "^(Listen.*)"
